@@ -7,7 +7,11 @@
 - **Free LLM options:** Ollama recommended as primary (local, no keys); optional free APIs (e.g. Google AI Studio / Gemini, Groq) documented for running without local compute.
 - **Docs:** PLAN.md section 4 (Sentiment) expanded with dual backends, three-model targets, and sub-hypothesis. README.md updated with Sentiment section and small-model comparison. This change log updated.
 
+## 2026-02-26 - Automation and config
 
+- **.gitignore:** Fixed PLAN.md ignore (removed leading spaces so the pattern matches). Added comment "Planning (keep local only)". PLAN.md is now properly ignored; use `git rm --cached PLAN.md` and commit if it was already tracked.
+- **GitHub Actions:** Added `.github/workflows/run-scrapers.yml`. Workflow runs all three scrapers (TechCrunch, NewsAPI Tech, Google News RSS) on a schedule or manually. Uses `NEWSAPI_API_KEY` from repo Secrets; writes `config/secrets.env` in the runner. Saves one combined, deduped file `data/raw/headlines_YYYYMMDD.jsonl` (date comes from the Python script at run time). Uploads that file as a run artifact; commits and pushes new or changed headlines to the repo so the remote stays up to date (pull locally to get new data).
+- **Schedule:** Cron set to `0 15 * * *` (15:00 UTC = 9am Central in winter/CST; 10am Central during CDT). One run per day is enough to capture the prior day’s relevant news from the current feeds.
 
 
 
