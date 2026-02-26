@@ -22,8 +22,8 @@ jobs:
         with:
           ref: main
 
-      - name: Buffer (1 hour)
-        run: sleep 3600
+      - name: Buffer (30 minutes)
+        run: sleep 1800
 
       - name: Set up Python
         uses: actions/setup-python@v5
