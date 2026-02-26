@@ -50,8 +50,8 @@ def deduplicate(articles: list[RawArticle]) -> list[RawArticle]:
 
 
 def save_raw_jsonl(articles: list[RawArticle], suffix: str = "") -> Path:
-    """Save to data/raw/headlines_YYYYMMDD[suffix].jsonl. Schema: source, fetched_at, headline, posted_at, reporter, url (no snippet)."""
-    date_str = datetime.utcnow().strftime("%Y%m%d")
+    """Save to data/raw/headlines_YYYYMMDD_HH[suffix].jsonl. Schema: source, fetched_at, headline, posted_at, reporter, url (no snippet). One file per run (hour in UTC) for two runs per day."""
+    date_str = datetime.utcnow().strftime("%Y%m%d_%H")
     fetched_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     name = f"headlines_{date_str}{suffix}.jsonl"
     path = DATA_RAW / name
