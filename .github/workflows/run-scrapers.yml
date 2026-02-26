@@ -1,0 +1,49 @@
+# Run headline scrapers on a schedule and optionally commit results to the repo.
+# Add NEWSAPI_API_KEY in Settings → Secrets and variables → Actions for NewsAPI.
+
+name: Run scrapers
+
+on:
+  schedule:
+    # Daily at 15:00 UTC = 9am Central (CST); 10am during CDT.
+    - cron: '0 15 * * *'
+  workflow_dispatch:  # Run manually from Actions tab
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure NewsAPI key
+        run: echo "NEWSAPI_API_KEY=${{ secrets.NEWSAPI_API_KEY }}" > config/secrets.env
+        env:
+          # Empty if secret not set; scrapers still run (TechCrunch, Google News)
+          NEWSAPI_API_KEY: ${{ secrets.NEWSAPI_API_KEY }}
+
+      - name: Run scrapers
+        run: python scripts/run_all_scrapers.py
+
+      - name: Upload headlines artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: headlines-${{ github.run_number }}
+          path: data/raw/headlines_*.jsonl
+
+      - name: Commit and push new headlines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/raw/headlines_*.jsonl
+          git diff --staged --quiet || (git commit -m "Scrape: headlines $(date -u +%Y-%m-%d)" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
