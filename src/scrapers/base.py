@@ -3,7 +3,7 @@ import json
 import re
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -51,8 +51,8 @@ def deduplicate(articles: list[RawArticle]) -> list[RawArticle]:
 
 def save_raw_jsonl(articles: list[RawArticle], suffix: str = "") -> Path:
     """Save to data/raw/headlines_YYYYMMDD_HH[suffix].jsonl. Schema: source, fetched_at, headline, posted_at, reporter, url (no snippet). One file per run (hour in UTC) for two runs per day."""
-    date_str = datetime.utcnow().strftime("%Y%m%d_%H")
-    fetched_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H")
+    fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     name = f"headlines_{date_str}{suffix}.jsonl"
     path = DATA_RAW / name
     with open(path, "w", encoding="utf-8") as f:
@@ -67,40 +67,6 @@ def save_raw_jsonl(articles: list[RawArticle], suffix: str = "") -> Path:
             }
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
     return path
-
-
-def load_raw_jsonl(path: Path) -> list[RawArticle]:
-    """Load RawArticle list from a JSONL file. Supports schema: source, fetched_at, headline, posted_at, reporter, url."""
-    articles = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            d = json.loads(line)
-            if "reporter" in d and "posted_at" in d:
-                articles.append(
-                    RawArticle(
-                        url=d["url"],
-                        headline=d["headline"],
-                        timestamp=d["posted_at"],
-                        source=d["reporter"],
-                        snippet="",
-                        pipeline_source=d.get("source", ""),
-                    )
-                )
-            else:
-                articles.append(
-                    RawArticle(
-                        url=d["url"],
-                        headline=d["headline"],
-                        timestamp=d["timestamp"],
-                        source=d["source"],
-                        snippet=d.get("snippet", ""),
-                        pipeline_source=d.get("pipeline_source", ""),
-                    )
-                )
-    return articles
 
 
 def fetch_html(url: str, delay_seconds: float = 1.0, timeout: int = 15) -> str:

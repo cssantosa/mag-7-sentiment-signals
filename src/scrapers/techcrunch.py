@@ -1,6 +1,6 @@
 """TechCrunch scraper via RSS feed."""
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import feedparser
 
@@ -26,7 +26,7 @@ def _parse_date(entry) -> str:
                     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                 except (ValueError, TypeError):
                     pass
-    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def scrape_techcrunch(limit: int = 50) -> list[RawArticle]:

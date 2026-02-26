@@ -27,6 +27,7 @@ ai_buzz_phrases:
   - "retrieval-augmented generation"
 
 ai_buzz_entities:
+  # Labs / companies
   - "OpenAI"
   - "Anthropic"
   - "Google DeepMind"
@@ -38,6 +39,35 @@ ai_buzz_entities:
   - "Stability AI"
   - "Qwen"
   - "DeepSeek"
+  # AI-centric Mag 7 / tech companies
+  - "Nvidia"
+  - "Alphabet"
+  # Popular AI products and agents
+  - "ChatGPT"
+  - "Copilot"
+  - "Microsoft Copilot"
+  - "Claude"
+  - "Gemini"
+  - "Grok"
+  - "Perplexity"
+  - "Midjourney"
+  - "DALL-E"
+  - "Sora"
+  - "ProducerAI"
+  - "Cursor"
+  - "Replit"
+  - "Character.AI"
+  - "Llama"
+  - "Phi"
+  - "GPT-4"
+  - "GPT-5"
+  - "o1"
+  - "o3"
+  - "Claude Opus"
+  - "Vertex AI"
+  - "Bedrock"
+  - "Watson"
+  - "Bard"
 
 regulatory_penalties:
   high_risk_terms:

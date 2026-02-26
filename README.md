@@ -26,7 +26,7 @@ Dependencies (see `requirements.txt`): feedparser, requests, beautifulsoup4, lxm
 
 ## Config
 
-- **`config/entities.yaml`** - Mag 7 tickers and **aliases** (including products/subsidiaries: e.g. Waymo, YouTube for GOOGL; Instagram, WhatsApp for META). AI buzz phrases/entities. **Partnerships** map (ticker -> list of AI partners); **partnership_entity_aliases** (e.g. OpenAI -> ChatGPT, Sam Altman, GPT-4; Qwen, DeepSeek, Ollama with model names). Partnership weight applies only when a headline mentions both the ticker (or its product) and one of that ticker's configured partners (or that partner's alias). Hype formula, bullwhip roles. Edit to add keywords or tickers.
+- **`config/entities_global.yaml`** - AI buzz phrases/entities (global). **`config/relationships/<ticker>.yaml`** - Mag 7 tickers, aliases (including products/subsidiaries: Waymo, YouTube for GOOGL; Instagram, WhatsApp for META), partnerships (ticker -> AI partners and aliases). Partnership weight applies when a headline mentions a ticker's partner. Edit to add keywords or tickers.
 - **NewsAPI (optional):** Put your API key in `config/secrets.env` (copy from `config/secrets.env.example`). Do not commit `secrets.env`; it is gitignored.
 
 ## Sources
@@ -39,15 +39,20 @@ Headlines come from three sources:
 
 Test individual sources: `python scripts/test/test_google_news.py`, `python scripts/test/test_newsapi.py`. Run all three and save: `python scripts/run_all_scrapers.py`.
 
-## Sentiment and small-model comparison (planned)
+## Process: match + sentiment (one file)
 
-Sentiment will be scored in two ways for comparison: **VADER** (lexicon-based on headline/snippet, output in [-1, 1]) and **LLM** via **Ollama** (local, no API cost). Small-model comparison will use three target models to compare "which small model is best at this task":
+One pipeline turns raw headlines into a single processed file with matching and sentiment:
 
-- **phi3** (Microsoft)
-- **llama3.2:3b** (Meta)
-- **deepseek-r1:1.5b** (DeepSeek)
+```bash
+python scripts/run_process.py
+```
 
-Pull with: `ollama pull phi3`, `ollama pull llama3.2:3b`, `ollama pull deepseek-r1:1.5b`. Results will be stored per headline and per method for agreement comparison and downstream Hype Score. See **PLAN.md** section 4 for design.
+1. Reads the latest `data/raw/headlines_*.jsonl`.
+2. Runs **matching** (ticker, is_ai_related, is_proxy_partnership) using `config/relationships/*` and `config/entities_global.yaml`.
+3. Runs **sentiment**: **VADER** plus Ollama LLMs (**phi3**, **llama3.2:3b**, **deepseek-r1:1.5b**) with the Senior Equity Research Analyst prompt.
+4. Writes **one** file: `data/processed/processed_<suffix>.jsonl` (no intermediate matched_ or sentiment_ files).
+
+Ensure Ollama is running with models pulled: `ollama pull phi3`, `ollama pull llama3.2:3b`, `ollama pull deepseek-r1:1.5b`. To run matching only (no sentiment), use `python scripts/run_matching.py`; it still writes `matched_*.jsonl` for backward compatibility.
 
 ## Run scrapers
 
@@ -56,10 +61,9 @@ python scripts/run_all_scrapers.py
 ```
 
 1. Scrapes TechCrunch, NewsAPI Tech, and Google News RSS; prints per-source counts (before and after dedup).
-2. Deduplicates and writes to `data/raw/`:
-   - `headlines_YYYYMMDD.jsonl` - combined, deduped; each line: source (pipeline), fetched_at, headline, posted_at, reporter, url
+2. Deduplicates and writes to `data/raw/`: `headlines_YYYYMMDD_HH.jsonl` (combined, deduped: source, fetched_at, headline, posted_at, reporter, url).
 
-Matching, sentiment, Hype Score, and price analysis are planned; see PLAN.md.
+Then run `python scripts/run_process.py` to produce `data/processed/processed_<suffix>.jsonl`. Hype Score and price analysis are planned; see PLAN.md.
 
 ## Phase 2 (planned)
 
@@ -67,13 +71,19 @@ Phase 2 (predictive model and backtest) is planned; see PLAN.md.
 
 ## Project layout
 
-- `config/entities.yaml` - Mag 7, AI buzz, partnerships, etc.
+- `config/entities_global.yaml` - AI buzz phrases/entities; `config/relationships/<ticker>.yaml` - Mag 7 aliases, partnerships
 - `config/secrets.env.example` - template for optional NewsAPI key
-- `src/scrapers/` **(1. scrapers)** - TechCrunch, NewsAPI Tech, Google News RSS; base dedup/save to single JSONL
-- `scripts/run_all_scrapers.py` - run all three scrapers and save outputs
+- `src/scrapers/` - TechCrunch, NewsAPI Tech, Google News RSS; base dedup/save to single JSONL
+- `src/matching/` - match headlines to tickers and AI relevance (config-driven)
+- `src/sentiment/` - VADER + Ollama sentiment; analyst prompt
+- `src/utils.py` - shared JSONL and path helpers
+- `scripts/run_all_scrapers.py` - run all three scrapers
+- `scripts/run_process.py` - **raw -> one processed file** (match + sentiment)
+- `scripts/run_matching.py` - matching only (writes matched_*.jsonl)
 - `scripts/test/` - test_google_news.py, test_newsapi.py
-- `data/raw/` - scraped headlines (headlines_YYYYMMDD.jsonl only)
+- `data/raw/` - scraped headlines (headlines_*.jsonl)
+- `data/processed/` - **processed_<suffix>.jsonl** (match + sentiment in one file)
 
-Additional modules (matching, sentiment, hype, prices, analysis) are planned; see PLAN.md.
+Hype Score, prices, and analysis are planned; see PLAN.md.
 
 See **PLAN.md** for hypothesis, architecture, and full pipeline design.

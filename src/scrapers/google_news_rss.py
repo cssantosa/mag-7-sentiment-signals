@@ -1,15 +1,12 @@
 """Google News artificial intelligence headlines via RSS (topic: Artificial intelligence)."""
-from datetime import datetime
-
+from datetime import datetime, timezone
 import feedparser
-
 from .base import RawArticle, parse_feed_date
 
 # Google News topic: Artificial intelligence (not general TECHNOLOGY)
 GOOGLE_NEWS_AI_RSS = (
     "https://news.google.com/rss/topics/CAAqIAgKIhpDQkFTRFFvSEwyMHZNRzFyZWhJQ1pXNG9BQVAB?hl=en-US&gl=US&ceid=US:en"
 )
-
 
 def _parse_date(entry) -> str:
     """Get ISO timestamp from feed entry."""
@@ -27,7 +24,7 @@ def _parse_date(entry) -> str:
                     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                 except (ValueError, TypeError):
                     pass
-    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def scrape_google_news_tech(limit: int = 50) -> list[RawArticle]:

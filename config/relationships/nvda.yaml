@@ -31,6 +31,7 @@ products:
     weight: 1.8
     type: "Architecture"
     aliases: ["Blackwell", "B200", "GB200", "B100"]
+    context: "NVDA's primary 2026 catalyst"
   CUDA:
     weight: 1.5
     type: "Software Ecosystem"
