@@ -1,0 +1,34 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "TSLA"
+
+identity:
+  company_name: "Tesla Inc."
+  aliases: ["Tesla", "TSLA"]
+  key_people: ["Elon Musk", "Vaibhav Taneja"]
+
+subsidiaries:
+  SolarCity:
+    weight: 0.3
+  Grohmann:
+    weight: 0.5
+    aliases: ["Tesla Automation"]
+
+products:
+  FSD:
+    weight: 2.0
+    aliases: ["Full Self-Driving", "FSD v13", "v14"]
+  Optimus:
+    weight: 1.9
+    aliases: ["Optimus Gen 3", "Tesla Bot"]
+  Dojo:
+    weight: 1.7
+    aliases: ["Dojo Supercomputer", "ExaPOD"]
+  Cybercab:
+    weight: 1.8
+    aliases: ["Robotaxi", "Cybercab"]
+
+ecosystem:
+  lab_partners:
+    xAI: { weight: 1.9, aliases: ["Grok", "Grok-3", "xAI Investment"] }

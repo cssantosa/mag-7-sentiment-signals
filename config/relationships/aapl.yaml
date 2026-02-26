@@ -1,0 +1,34 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "AAPL"
+
+identity:
+  company_name: "Apple Inc."
+  aliases: ["Apple", "AAPL", "Cupertino"]
+  key_people: ["Tim Cook", "Luca Maestri", "John Giannandrea"]
+
+subsidiaries:
+  Beats:
+    weight: 0.3
+  Claris:
+    weight: 0.2
+
+products:
+  Apple_Intelligence:
+    weight: 2.0
+    aliases: ["Apple Intelligence", "Siri LLM", "Genmoji"]
+  Neural_Engine:
+    weight: 1.5
+    aliases: ["A19 Pro", "A20", "M5 Chip", "M6 Ultra"]
+  Private_Cloud_Compute:
+    weight: 1.8
+    aliases: ["PCC", "Apple Silicon Servers"]
+  Vision_Pro:
+    weight: 1.2
+    aliases: ["Vision Pro 2", "visionOS 3"]
+
+ecosystem:
+  lab_partners:
+    OpenAI: { weight: 1.4, aliases: ["ChatGPT Integration"] }
+    Google: { weight: 1.2, aliases: ["Gemini for iPhone"] }

@@ -1,0 +1,75 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "MSFT"
+
+identity:
+  ticker: "MSFT"
+  company_name: "Microsoft Corporation"
+  aliases: ["Microsoft", "MSFT", "Redmond"]
+  key_people:
+    - "Satya Nadella"
+    - "Amy Hood"          # CFO (Highest impact for earnings sentiment)
+    - "Mustafa Suleyman"  # CEO of Microsoft AI (The 2026 'Alpha' person)
+
+subsidiaries:
+  LinkedIn:
+    weight: 0.7
+    aliases: ["LinkedIn", "LinkedIn Learning"]
+  GitHub:
+    weight: 1.1  # High weight due to GitHub Copilot/Next
+    aliases: ["GitHub", "GitHub Next", "GH Copilot"]
+  Nuance:
+    weight: 0.8  # Strategic for Healthcare AI (DAX Copilot)
+    aliases: ["Nuance Communications", "DAX Copilot"]
+
+products:
+  MAI-1:
+    weight: 2.0  # In-house model (Highest sentiment impact for independence)
+    type: "Frontier Model"
+    aliases: ["MAI-1", "MAI-2", "Microsoft Internal Model"]
+  Azure_AI:
+    weight: 1.8
+    type: "Cloud Infrastructure"
+    aliases: ["Azure AI Foundry", "Azure OpenAI Service", "Azure AI Search"]
+  Copilot:
+    weight: 1.5
+    type: "Agentic Assistant"
+    aliases: ["M365 Copilot", "Copilot Studio", "Copilot Pro", "Security Copilot"]
+  Phi_Series:
+    weight: 1.2
+    type: "Small Language Model (SLM)"
+    aliases: ["Phi-3", "Phi-4", "Phi-Silica"]
+
+ecosystem:
+  lab_partners:
+    OpenAI:
+      weight: 1.5
+      aliases: ["OpenAI", "Sam Altman", "GPT-5", "Sora", "o1-preview"]
+      dependency_score: 0.8  # High score = MSFT stock moves when OpenAI has news
+    Anthropic:
+      weight: 0.9  # Competitor & Partner on Azure
+      aliases: ["Claude 4", "Claude 3.5 Sonnet", "Dario Amodei"]
+    Mistral:
+      weight: 0.7
+      aliases: ["Mistral Large", "Mistral NeMo"]
+  suppliers:
+    - name: "Nvidia"
+      weight: 1.1
+      keywords: ["Blackwell clusters", "GB200", "H100 allocation"]
+    - name: "Custom_Silicon"
+      weight: 1.4  # Sentiment on MSFT's own chips is very bullish
+      keywords: ["Maia 100", "Cobalt 100", "Azure Maia"]
+
+scoring_logic:
+  partnership_bonus: 2.0   # Applies when Headline mentions [Ticker] + [Lab_Partner]
+  autonomy_bonus: 2.5      # Applies when MSFT succeeds WITHOUT OpenAI (e.g., MAI-1 news)
+  market_role: "Consumer/Platform"  # Used to track lead-lag relative to NVDA (Supplier)
+
+ai_context_filters:
+  - "Agentic Workflows"
+  - "Autonomous Agents"
+  - "Inference Costs"
+  - "CapEx Spending"
+  - "Scaling Laws"
+  - "Compute Threshold"

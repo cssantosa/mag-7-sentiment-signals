@@ -1,0 +1,78 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  description: "Global AI buzzwords, regulatory risk terms, and macro AI indicators. No ticker-specific data."
+
+ai_buzz_phrases:
+  - "AI"
+  - "artificial intelligence"
+  - "agentic"
+  - "agentic workflows"
+  - "autonomous agents"
+  - "generative AI"
+  - "gen AI"
+  - "large language model"
+  - "LLM"
+  - "LLMs"
+  - "foundation model"
+  - "frontier model"
+  - "small language model"
+  - "SLM"
+  - "multimodal"
+  - "vision-language model"
+  - "inference cost"
+  - "inference latency"
+  - "context window"
+  - "RAG"
+  - "retrieval-augmented generation"
+
+ai_buzz_entities:
+  - "OpenAI"
+  - "Anthropic"
+  - "Google DeepMind"
+  - "DeepMind"
+  - "Mistral"
+  - "xAI"
+  - "Cohere"
+  - "Hugging Face"
+  - "Stability AI"
+  - "Qwen"
+  - "DeepSeek"
+
+regulatory_penalties:
+  high_risk_terms:
+    - "export controls"
+    - "China GPU ban"
+    - "entity list"
+    - "sanctions"
+    - "FTC antitrust"
+    - "DoJ antitrust"
+    - "competition probe"
+    - "monopoly investigation"
+    - "AI safety violation"
+    - "compliance failure"
+  neutral_or_positive_terms:
+    - "EU AI Act compliance"
+    - "AI safety standards"
+    - "regulatory approval"
+
+macro_indicators:
+  energy_and_infra:
+    - "Small Modular Reactors"
+    - "SMR"
+    - "grid load"
+    - "gigawatt ceiling"
+    - "data center moratorium"
+  supply_chain_and_bottlenecks:
+    - "HBM4 shortage"
+    - "power constraints"
+    - "cooling constraints"
+    - "chip supply shortage"
+    - "foundry capacity"
+  adoption_and_demand:
+    - "sovereign AI"
+    - "GPU-as-a-Service"
+    - "AI cloud spend"
+    - "capex digestion"
+    - "AI investment cycle"
+

@@ -1,0 +1,37 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "AMZN"
+
+identity:
+  company_name: "Amazon.com Inc."
+  aliases: ["Amazon", "AMZN", "AWS"]
+  key_people: ["Andy Jassy", "Brian Olsavsky", "Matt Garman"]
+
+subsidiaries:
+  AWS:
+    weight: 1.9
+    aliases: ["Amazon Web Services"]
+  Zoox:
+    weight: 0.8
+    aliases: ["Autonomous Robotaxi"]
+  Whole_Foods:
+    weight: 0.4
+
+products:
+  Bedrock:
+    weight: 1.8
+    aliases: ["AWS Bedrock", "Titan Models"]
+  Trainium:
+    weight: 2.0
+    aliases: ["Trainium 2", "Trainium 3", "Inferentia"]
+  Rufus:
+    weight: 1.1
+    aliases: ["Amazon Shopping Assistant", "Rufus AI"]
+  Q_Business:
+    weight: 1.4
+    aliases: ["Amazon Q", "AWS Q"]
+
+ecosystem:
+  lab_partners:
+    Anthropic: { weight: 1.7, aliases: ["Claude 4", "Claude 3.5"] }

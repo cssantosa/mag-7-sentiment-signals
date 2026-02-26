@@ -1,0 +1,36 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "META"
+
+identity:
+  company_name: "Meta Platforms Inc."
+  aliases: ["Meta", "Facebook", "META"]
+  key_people: ["Mark Zuckerberg", "Susan Li", "Yann LeCun"]
+
+subsidiaries:
+  Instagram:
+    weight: 0.9
+  WhatsApp:
+    weight: 1.2
+    aliases: ["WhatsApp AI", "Business Messaging"]
+  Reality_Labs:
+    weight: 0.8
+
+products:
+  Llama:
+    weight: 2.0
+    aliases: ["Llama 4", "Llama 3.1", "Open Weights"]
+  Meta_AI:
+    weight: 1.5
+    aliases: ["Meta Assistant", "Imagine with Meta"]
+  MTIA:
+    weight: 1.4
+    aliases: ["Meta Training Accelerator", "Custom Silicon"]
+  RayBan_Meta:
+    weight: 1.3
+    aliases: ["Orion", "AI Glasses"]
+
+ecosystem:
+  infra_partners:
+    AMD: { weight: 1.6, aliases: ["6GW Deal", "MI450"] }

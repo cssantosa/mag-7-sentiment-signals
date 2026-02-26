@@ -1,0 +1,85 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "NVDA"
+
+identity:
+  ticker: "NVDA"
+  company_name: "NVIDIA Corporation"
+  aliases: ["Nvidia", "NVIDIA", "NVDA", "Team Green"]
+  key_people:
+    - "Jensen Huang"
+    - "Colette Kress"  # CFO - critical for earnings sentiment
+    - "Ian Buck"        # Head of Hyperscale and HPC
+
+subsidiaries:
+  Mellanox:
+    weight: 1.2  # Critical for networking/InfiniBand news
+    aliases: ["Mellanox", "Nvidia Networking"]
+  Cumulus_Networks:
+    weight: 0.5
+    aliases: ["Cumulus", "Nvidia Software"]
+  DeepMap:
+    weight: 0.7  # Relevant for Automotive/Autonomous AI news
+
+products:
+  Rubin:
+    weight: 2.0
+    type: "Architecture"
+    aliases: ["Rubin", "R100", "Vera Rubin", "R200"]
+  Blackwell:
+    weight: 1.8
+    type: "Architecture"
+    aliases: ["Blackwell", "B200", "GB200", "B100"]
+  CUDA:
+    weight: 1.5
+    type: "Software Ecosystem"
+    aliases: ["CUDA", "cuDNN", "TensorRT"]
+  BlueField:
+    weight: 1.1
+    type: "DPU/Networking"
+    aliases: ["BlueField-3", "BlueField-4", "DPU"]
+  Spectrum_X:
+    weight: 1.3
+    type: "Ethernet AI"
+    aliases: ["Spectrum-X", "AI Ethernet"]
+  RTX_50:
+    weight: 0.8
+    type: "GPU"
+    aliases: ["RTX 5090", "RTX 5080", "Blackwell Consumer"]
+  Omniverse:
+    weight: 0.9
+    type: "Industrial AI"
+    aliases: ["Omniverse", "Digital Twin"]
+
+ecosystem:
+  suppliers:
+    - name: "TSMC"
+      weight: 1.5  # If TSMC has a "Wafer Shortage," NVDA sentiment drops
+      keywords: ["CoWoS", "2nm", "Foundry capacity"]
+    - name: "SK Hynix"
+      weight: 1.2
+      keywords: ["HBM4", "High Bandwidth Memory"]
+  partners:
+    - name: "OpenAI"
+      weight: 1.3  # Major customer news
+    - name: "Supermicro"
+      weight: 1.1  # Rack integration partner
+  competitors:
+    - name: "AMD"
+      weight: -1.0  # "AMD MI400 beats Nvidia" = Negative for NVDA
+      keywords: ["MI300", "MI400", "ROCm"]
+    - name: "Groq"
+      weight: -0.8
+      keywords: ["LPU", "Inference speed"]
+
+scoring_rules:
+  partnership_multiplier: 2.0
+  breakthrough_multiplier: 2.5
+  regulatory_penalty: -1.8  # High for "China Export Bans" or "FTC Antitrust"
+  market_role: "Supplier"
+  correlation_targets: ["MSFT", "GOOGL", "AMZN", "META"]
+
+macro_catalysts:
+  bullish: ["Sovereign AI", "GPU-as-a-Service", "Liquid Cooling Adoption"]
+  bearish: ["Export Controls", "China Ban", "CapEx Digestion", "Power Grid Limitations"]

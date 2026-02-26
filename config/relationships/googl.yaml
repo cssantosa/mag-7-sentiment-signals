@@ -1,0 +1,31 @@
+metadata:
+  version: "1.0"
+  last_updated: "2026-02-26"
+  target_ticker: "GOOGL"
+
+identity:
+  company_name: "Alphabet Inc."
+  aliases: ["Google", "Alphabet", "GOOGL", "GOOG"]
+  key_people: ["Sundar Pichai", "Ruth Porat", "Demis Hassabis"]
+
+subsidiaries:
+  DeepMind:
+    weight: 1.8
+    aliases: ["Google DeepMind", "Aletheia"]
+  Waymo:
+    weight: 1.3
+    aliases: ["Waymo Driver", "Autonomous Taxi"]
+  YouTube:
+    weight: 1.0
+    aliases: ["YouTube AI", "Creator Music"]
+
+products:
+  Gemini:
+    weight: 2.0
+    aliases: ["Gemini 2.0", "Gemini Ultra", "Gemini Live"]
+  Vertex_AI:
+    weight: 1.7
+    aliases: ["Google Cloud AI", "Model Garden"]
+  TPU:
+    weight: 1.6
+    aliases: ["TPU v6", "TPU v7", "Trillium"]

@@ -9,7 +9,8 @@ import yaml
 from .base import RawArticle
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_CONFIG_PATH = _PROJECT_ROOT / "config" / "entities.yaml"
+_RELATIONSHIPS_DIR = _PROJECT_ROOT / "config" / "relationships"
+_GLOBAL_CONFIG_PATH = _PROJECT_ROOT / "config" / "entities_global.yaml"
 _SECRETS_ENV = _PROJECT_ROOT / "config" / "secrets.env"
 
 
@@ -29,20 +30,56 @@ def _load_api_key_from_file() -> str | None:
 
 
 def _load_search_terms() -> list[str]:
-    """Load Mag-7 tickers/aliases and AI buzz from config for NewsAPI q= query."""
-    if not _CONFIG_PATH.exists():
-        return ["AI", "artificial intelligence"]
-    with open(_CONFIG_PATH, encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-    terms = []
-    mag7 = data.get("mag7") or {}
-    terms.extend(mag7.get("tickers") or [])
-    for aliases in (mag7.get("aliases") or {}).values():
-        terms.extend(aliases)
-    terms.extend(data.get("ai_buzz_phrases") or [])
-    terms.extend(data.get("ai_buzz_entities") or [])
-    seen = set()
-    out = []
+    """
+    Load Mag-7 tickers/aliases and AI buzz from the new YAML layout:
+
+    - Tickers and aliases from config/relationships/<ticker>.yaml
+    - AI buzz phrases/entities from config/entities_global.yaml
+    """
+    terms: list[str] = []
+
+    # 1) Per-ticker relationships: tickers, aliases, products, subsidiaries.
+    if _RELATIONSHIPS_DIR.exists():
+        for path in _RELATIONSHIPS_DIR.glob("*.yaml"):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+            except OSError:
+                continue
+
+            metadata = data.get("metadata") or {}
+            identity = data.get("identity") or {}
+
+            ticker = metadata.get("target_ticker") or identity.get("ticker")
+            if ticker:
+                terms.append(str(ticker))
+
+            for alias in identity.get("aliases", []):
+                terms.append(alias)
+
+            for section in ("subsidiaries", "products"):
+                for name, meta in (data.get(section) or {}).items():
+                    terms.append(str(name))
+                    for alias in (meta or {}).get("aliases", []):
+                        terms.append(alias)
+
+    # 2) Global AI buzzwords / entities.
+    if _GLOBAL_CONFIG_PATH.exists():
+        try:
+            with open(_GLOBAL_CONFIG_PATH, encoding="utf-8") as f:
+                g = yaml.safe_load(f) or {}
+        except OSError:
+            g = {}
+        terms.extend(g.get("ai_buzz_phrases") or [])
+        terms.extend(g.get("ai_buzz_entities") or [])
+
+    # Fallback if config is missing or empty.
+    if not terms:
+        terms = ["AI", "artificial intelligence"]
+
+    # Deduplicate while preserving order.
+    seen: set[str] = set()
+    out: list[str] = []
     for t in terms:
         t = (t or "").strip()
         if t and t not in seen:
