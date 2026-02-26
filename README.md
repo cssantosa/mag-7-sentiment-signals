@@ -50,7 +50,7 @@ python scripts/run_process.py
 1. Reads the latest `data/raw/headlines_*.jsonl`.
 2. Runs **matching** (ticker, is_ai_related, is_proxy_partnership) using `config/relationships/*` and `config/entities_global.yaml`.
 3. Runs **sentiment**: **VADER** plus Ollama LLMs (**phi3**, **llama3.2:3b**, **deepseek-r1:1.5b**) with the Senior Equity Research Analyst prompt.
-4. Writes **one** file: `data/processed/processed_<suffix>.jsonl` (no intermediate matched_ or sentiment_ files).
+4. Writes **one** file: `data/cleaned/processed_<suffix>.jsonl` (no intermediate matched_ or sentiment_ files).
 
 Ensure Ollama is running with models pulled: `ollama pull phi3`, `ollama pull llama3.2:3b`, `ollama pull deepseek-r1:1.5b`. To run matching only (no sentiment), use `python scripts/run_matching.py`; it still writes `matched_*.jsonl` for backward compatibility.
 
@@ -63,7 +63,7 @@ python scripts/run_all_scrapers.py
 1. Scrapes TechCrunch, NewsAPI Tech, and Google News RSS; prints per-source counts (before and after dedup).
 2. Deduplicates and writes to `data/raw/`: `headlines_YYYYMMDD_HH.jsonl` (combined, deduped: source, fetched_at, headline, posted_at, reporter, url).
 
-Then run `python scripts/run_process.py` to produce `data/processed/processed_<suffix>.jsonl`. Hype Score and price analysis are planned; see PLAN.md.
+Then run `python scripts/run_process.py` to produce `data/cleaned/processed_<suffix>.jsonl`. Optionally run `python scripts/headlines_master_orig.py` to aggregate all raw files into `data/cleaned/headlines_master_orig.jsonl` (create or append new rows only). Hype Score and price analysis are planned; see PLAN.md.
 
 ## Phase 2 (planned)
 
@@ -79,10 +79,11 @@ Phase 2 (predictive model and backtest) is planned; see PLAN.md.
 - `src/utils.py` - shared JSONL and path helpers
 - `scripts/run_all_scrapers.py` - run all three scrapers
 - `scripts/run_process.py` - **raw -> one processed file** (match + sentiment)
+- `scripts/headlines_master_orig.py` - aggregate all raw into data/cleaned/headlines_master_orig.jsonl (create or append)
 - `scripts/run_matching.py` - matching only (writes matched_*.jsonl)
 - `scripts/test/` - test_google_news.py, test_newsapi.py
 - `data/raw/` - scraped headlines (headlines_*.jsonl)
-- `data/processed/` - **processed_<suffix>.jsonl** (match + sentiment in one file)
+- `data/cleaned/` - **processed_<suffix>.jsonl** (match + sentiment), **headlines_master_orig.jsonl** (aggregated raw, run `scripts/headlines_master_orig.py`)
 
 Hype Score, prices, and analysis are planned; see PLAN.md.
 

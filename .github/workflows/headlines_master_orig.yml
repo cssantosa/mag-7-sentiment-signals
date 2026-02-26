@@ -1,0 +1,46 @@
+# Run headlines_master_orig.py after scrapers complete (1-hour buffer).
+# Aggregates all data/raw/headlines_*.jsonl into data/cleaned/headlines_master_orig.jsonl.
+
+name: Update headlines master
+
+on:
+  workflow_run:
+    workflows: ["Run scrapers"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  update-master:
+    # Only run when the scrape workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Buffer (1 hour)
+        run: sleep 3600
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run headlines_master_orig
+        run: python scripts/headlines_master_orig.py
+
+      - name: Commit and push updated master
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/cleaned/headlines_master_orig.jsonl
+          git diff --staged --quiet || (git commit -m "Update headlines_master_orig after scrape" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

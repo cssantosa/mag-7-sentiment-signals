@@ -4,7 +4,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_RAW = ROOT / "data" / "raw"
-DATA_PROCESSED = ROOT / "data" / "processed"
+DATA_CLEANED = ROOT / "data" / "cleaned"
+RAW_MASTER_PATH = DATA_CLEANED / "headlines_master_orig.jsonl"
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -47,6 +48,6 @@ def get_latest_raw_path() -> Path | None:
 
 
 def processed_output_path(suffix: str) -> Path:
-    """Return path for single processed file: data/processed/processed_<suffix>.jsonl."""
-    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
-    return DATA_PROCESSED / f"processed_{suffix}.jsonl"
+    """Return path for single processed file: data/cleaned/processed_<suffix>.jsonl."""
+    DATA_CLEANED.mkdir(parents=True, exist_ok=True)
+    return DATA_CLEANED / f"processed_{suffix}.jsonl"

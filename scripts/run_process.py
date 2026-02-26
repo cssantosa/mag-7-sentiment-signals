@@ -2,7 +2,7 @@
 Run full pipeline: raw headlines -> match -> sentiment -> one processed file.
 
 Reads data/raw/headlines_*.jsonl (latest file by default), runs matching and sentiment
-(VADER + phi3, llama3.2:3b, deepseek-r1:1.5b), writes data/processed/processed_<suffix>.jsonl.
+(VADER + phi3, llama3.2:3b, deepseek-r1:1.5b), writes data/cleaned/processed_<suffix>.jsonl.
 No intermediate matched_ or sentiment_ files.
 """
 import sys
@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.utils import (
     DATA_RAW,
-    DATA_PROCESSED,
+    DATA_CLEANED,
     get_latest_raw_path,
     load_jsonl_paths,
     processed_output_path,
