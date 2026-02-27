@@ -11,7 +11,3 @@ def score_vader(text: str) -> float:
     out = _analyzer.polarity_scores(text.strip())
     compound = out.get("compound", 0.0)
     return max(-1.0, min(1.0, float(compound)))
-
-def score_vader(text: str) -> float:
-    """Utilizes VADER sentiment analysis to score text on a scale of [-1, 1]"""
-    

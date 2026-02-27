@@ -7,6 +7,7 @@ No intermediate matched_ or sentiment_ files.
 """
 import sys
 from pathlib import Path
+import time 
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -60,15 +61,17 @@ def main() -> None:
     elif any(b != "vader" for b in backends):
         print("  (Ensure Ollama is running with phi3, llama3.2:3b, deepseek-r1:1.5b for LLM scores.)")
 
+    start_time = time.time()
     raw_count = len(load_jsonl_paths(raw_paths))
     matched = run_matching_to_rows(raw_paths)
     full = add_sentiment_to_rows(matched, backends=backends)
     write_jsonl(full, output_path)
 
     print(f"Raw headlines read: {raw_count}")
-    print(f"Matched rows:      {len(matched)}")
-    print(f"Output:            {output_path}")
-    print(f"Rows written:      {len(full)}")
+    print(f"Matched rows: {len(matched)}")
+    print(f"Output: {output_path}")
+    print(f"Rows written: {len(full)}")
+    print(f"Time taken: {time.time() - start_time:.2f} seconds")
 
 
 if __name__ == "__main__":

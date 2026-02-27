@@ -6,9 +6,6 @@
 - **Small-model comparison (sub-hypothesis):** Three target models for LLM sentiment, all run locally via **Ollama** (no API cost): **phi3** (Microsoft), **llama3.2:3b** (Meta), **deepseek-r1:1.5b** (DeepSeek). Goal: compare which small model is best at this sentiment task and how much they agree. Research rationale and pull commands documented in PLAN.md and README.md.
 - **Free LLM options:** Ollama recommended as primary (local, no keys); optional free APIs (e.g. Google AI Studio / Gemini, Groq) documented for running without local compute.
 - **Docs:** PLAN.md section 4 (Sentiment) expanded with dual backends, three-model targets, and sub-hypothesis. README.md updated with Sentiment section and small-model comparison. This change log updated.
-
-## 2026-02-25 - Automation and config
-
 - **.gitignore:** Fixed PLAN.md ignore (removed leading spaces so the pattern matches). Added comment "Planning (keep local only)". PLAN.md is now properly ignored; use `git rm --cached PLAN.md` and commit if it was already tracked.
 - **GitHub Actions:** Added `.github/workflows/run-scrapers.yml`. Workflow runs all three scrapers (TechCrunch, NewsAPI Tech, Google News RSS) on a schedule or manually. Uses `NEWSAPI_API_KEY` from repo Secrets; writes `config/secrets.env` in the runner. Saves one combined, deduped file `data/raw/headlines_YYYYMMDD.jsonl` (date comes from the Python script at run time). Uploads that file as a run artifact; commits and pushes new or changed headlines to the repo so the remote stays up to date (pull locally to get new data).
 - **Schedule:** Cron set to `0 15 * * *` (15:00 UTC = 9am Central in winter/CST; 10am Central during CDT). One run per day is enough to capture the prior day’s relevant news from the current feeds.
@@ -17,7 +14,9 @@
 
 - **is_ai_related:** Testing through01_sentiment_scores.ipynb notebook. Wanted to gauge what were hitting as is_ai_related and whether it was correct
 - **entities_global:** Expanded ai_buzz_entities with popular AI products/agents: ChatGPT, Copilot, Claude, Gemini, Grok, Perplexity, Midjourney, DALL-E, Sora, Cursor, Vertex AI, Bedrock, Watson, Bard, Llama, Phi, GPT-4/5, o1/o3, Claude Opus, etc.
-
-
+- **data/processed → data/cleaned:** Output folder renamed; all processed and master files now live under `data/cleaned/`.
+- **Raw master:** `scripts/headlines_master_orig.py` aggregates all `data/raw/headlines_*.jsonl` into `data/cleaned/headlines_master_orig.jsonl`. If the file exists, only new rows (by headline+url) are appended; otherwise it is created and deduped. No sentiment or matching—raw aggregation only.
+- **Update headlines master workflow:** `.github/workflows/headlines_master_orig.yml` runs after "Run scrapers" completes successfully, waits 30 minutes, then runs `headlines_master_orig.py` and commits/pushes the updated master file. Cron set to `0 22 * * *` to run twice per day.
+- **run_matching:** Matching is integrated into `run_process.py` (it calls `run_matching_to_rows` then adds sentiment). The standalone `scripts/run_matching.py` is optional—only needed if you want match-only output (`matched_*.jsonl`); the main pipeline is `run_process` → one `processed_*.jsonl`.
 
 
