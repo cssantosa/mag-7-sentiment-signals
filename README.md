@@ -23,12 +23,31 @@ pip install -r requirements.txt
 pip install -r requirements.txt
 ```
 
-Dependencies (see `requirements.txt`): feedparser, requests, beautifulsoup4, lxml, pyyaml, pandas, numpy, yfinance, vaderSentiment, matplotlib, seaborn, scipy, xgboost, newsapi-python. Optional: LLM sentiment will use Ollama locally (no API key required for phi3, llama3.2:3b, deepseek-r1:1.5b).
+Dependencies (see `requirements.txt`): feedparser, requests, beautifulsoup4, lxml, pyyaml, pandas, numpy, yfinance, vaderSentiment, matplotlib, seaborn, scipy, xgboost, newsapi-python. 
+
+
+### Ollama (optional, for local LLM sentiment)
+Install/pull the models used by the sentiment pipeline:
+
+```bash
+ollama pull phi3
+ollama pull llama3.2:3b
+ollama pull deepseek-r1:1.5b
+```
+
+Make sure Ollama is running before running the LLM backends.
+
+### Run without LLMs (VADER only)
+
+```bash
+python scripts/run_process.py --backends vader
+```
 
 ## Config
 
-- **`config/entities_global.yaml`** - AI buzz phrases/entities (global). **`config/relationships/<ticker>.yaml`** - Mag 7 tickers, aliases (including products/subsidiaries: Waymo, YouTube for GOOGL; Instagram, WhatsApp for META), partnerships (ticker -> AI partners and aliases). Partnership weight applies when a headline mentions a ticker's partner. Edit to add keywords or tickers.
-- **NewsAPI (optional):** Put your API key in `config/secrets.env` (copy from `config/secrets.env.example`). Do not commit `secrets.env`; it is gitignored.
+- **`config/entities_global.yaml`** — Global AI/relevance config: phrases and entities that flag a headline as AI-related, plus regulatory and macro terms. No ticker-specific data.
+- **`config/relationships/<ticker>.yaml`** — One file per Mag 7 ticker. Defines identity (company name, aliases), subsidiaries (e.g. Instagram, WhatsApp for META), products, and ecosystem (partners, suppliers, competitors) with optional weights and keywords. Used to match headlines to tickers and to build the context string passed to the LLM for sentiment.
+- **NewsAPI:** Put your API key in `config/secrets.env` (copy from `config/secrets.env.example`). Do not commit `secrets.env`; it is gitignored.
 
 ## Sources
 
@@ -38,38 +57,24 @@ Headlines come from three sources:
 2. **NewsAPI Tech** (Top Headlines, category=technology) - requires API key in `config/secrets.env`.
 3. **Google News** (RSS, artificial intelligence topic) - no API key required.
 
-Test individual sources: `python scripts/test/test_google_news.py`, `python scripts/test/test_newsapi.py`. Run all three and save: `python scripts/run_all_scrapers.py`.
 
-## Process: match + sentiment (one file)
+## Process: Workflows + Local
 
-One pipeline turns raw headlines into a single processed file with matching and sentiment:
+**Automated (GitHub Actions)**  
+Two workflows keep raw headlines and the aggregated master file updated:
 
-```bash
-python scripts/run_process.py
-```
+1. **Run scrapers** (schedule or manual) — Runs `scripts/run_all_scrapers.py`; writes `data/raw/headlines_YYYYMMDD_HH.jsonl`, then commits and pushes. Optionally uploads an artifact.
+2. **Update headlines master** — Runs after scrapers complete (with a delay). Runs `scripts/headlines_master_orig.py`; merges all raw files into `data/cleaned/headlines_master_orig.jsonl`, then commits and pushes.
 
-1. Reads the latest `data/raw/headlines_*.jsonl`.
-2. Runs **matching** (ticker, is_ai_related, is_proxy_partnership) using `config/relationships/*` and `config/entities_global.yaml`.
-3. Runs **sentiment**: **VADER** plus Ollama LLMs (**phi3**, **llama3.2:3b**, **deepseek-r1:1.5b**) with the Senior Equity Research Analyst prompt.
-4. Writes **one** file: `data/cleaned/processed_<suffix>.jsonl` (no intermediate matched_ or sentiment_ files).
+**Local (manual)**  
+3. **Run processing locally** — Run `python scripts/run_process.py` (or `--backends vader` for VADER-only) to read the latest `data/raw/headlines_*.jsonl`, apply matching + sentiment, and write `data/cleaned/processed_<suffix>.jsonl`.
 
+4. 
 Additional details:
 
 - Output columns currently include `sentiment_vader`, `sentiment_llm_phi3`, `sentiment_llm_llama3_2`, and `sentiment_llm_deepseek_r1`, all on the [-1, 1] scale.
 - Matching uses the YAML configuration in `config/entities_global.yaml` and `config/relationships/*` to derive ticker/AI flags and injects that context into the LLM sentiment prompt.
 - You can control which sentiment backends run via `--backends`, e.g. `python scripts/run_process.py --backends vader` for a fast VADER-only test.
-
-Ensure Ollama is running with models pulled: `ollama pull phi3`, `ollama pull llama3.2:3b`, `ollama pull deepseek-r1:1.5b`. To run matching only (no sentiment), use `python scripts/run_matching.py`; it still writes `matched_*.jsonl` for backward compatibility.
-
-## Run scrapers
-
-```bash
-python scripts/run_all_scrapers.py
-```
-
-1. Scrapes TechCrunch, NewsAPI Tech, and Google News RSS; prints per-source counts (before and after dedup).
-2. Deduplicates and writes to `data/raw/`: `headlines_YYYYMMDD_HH.jsonl` (combined, deduped: source, fetched_at, headline, posted_at, reporter, url).
-Then run `python scripts/run_process.py` to produce `data/cleaned/processed_<suffix>.jsonl`. Optionally run `python scripts/headlines_master_orig.py` to aggregate all raw files into `data/cleaned/headlines_master_orig.jsonl` (create or append new rows only). Notebook analysis currently focuses on sentiment patterns and model comparison; Hype Score and price analysis are planned; see PLAN.md.
 
 ## Analysis & notebooks
 
@@ -78,19 +83,12 @@ Then run `python scripts/run_process.py` to produce `data/cleaned/processed_<suf
   - Computes ticker-level average sentiment across all headlines and an AI-related-only subset (`is_ai_related == True`).
   - Visualizes backends with heatmaps and grouped bar charts to compare VADER vs the three LLMs at the ticker level.
   - Includes a section that inspects DeepSeek-R1 versus other models (e.g., on TSLA and META) and prints raw DeepSeek-R1 responses for contrarian headlines to understand its reasoning.
-  - Example grouped barplot (saved from the notebook) can be embedded by saving the figure and viewing it in the repo:
 
-    ```python
-    plt.tight_layout()
-    plt.savefig("docs/ticker_sentiment_barplot.png", dpi=150)
-    ```
+  **Average sentiment per ticker and sentiment score (AI-related headlines):**
 
-    And in this README:
+  ![Average sentiment per ticker and sentiment score](visualizations/sentiment_scores.png)
 
-    `![Average sentiment per ticker and backend](docs/ticker_sentiment_barplot.png)`
-
-- **`notebooks/sentiment_testing.ipynb`**
-  - Earlier exploration and scratchpad for sentiment scoring and AI-flag tuning; useful for experiments but not required for running the main pipeline.
+DeepSeek-R1 has shown more contrarian behavior on some names (e.g., TSLA and META); inspecting its raw responses in the notebook suggests this is due to different but coherent reasoning rather than a pipeline or parsing bug.
 
 ## LLM–VADER delta metrics
 
@@ -104,8 +102,6 @@ are used to explore disagreement between models. Aggregating these deltas by tic
 
 - **Quality checks**: flagging headlines or tickers where LLMs strongly disagree with VADER or with each other.
 - **Research features**: candidate inputs for future predictive models alongside raw sentiment scores.
-
-Empirically, DeepSeek-R1 has shown more contrarian behavior on some names (e.g., TSLA and META); inspecting its raw responses in the notebook suggests this is due to different but coherent reasoning rather than a pipeline or parsing bug.
 
 ### Planned delta visualizations
 
@@ -122,20 +118,47 @@ Looking into analyzing sentiment scores of VADER and the llms and once there's e
 
 ## Project layout
 
-- `config/entities_global.yaml` - AI buzz phrases/entities; `config/relationships/<ticker>.yaml` - Mag 7 aliases, partnerships
-- `config/secrets.env.example` - template for optional NewsAPI key
-- `src/scrapers/` - TechCrunch, NewsAPI Tech, Google News RSS; base dedup/save to single JSONL
-- `src/matching/` - match headlines to tickers and AI relevance (config-driven)
-- `src/sentiment/` - VADER + Ollama sentiment; analyst prompt
-- `src/utils.py` - shared JSONL and path helpers
-- `scripts/run_all_scrapers.py` - run all three scrapers
-- `scripts/run_process.py` - **raw -> one processed file** (match + sentiment)
-- `scripts/headlines_master_orig.py` - aggregate all raw into data/cleaned/headlines_master_orig.jsonl (create or append)
-- `scripts/run_matching.py` - matching only (writes matched_*.jsonl)
-- `scripts/test/` - test_google_news.py, test_newsapi.py
-- `data/raw/` - scraped headlines (headlines_*.jsonl)
-- `data/cleaned/` - **processed_<suffix>.jsonl** (match + sentiment), **headlines_master_orig.jsonl** (aggregated raw, run `scripts/headlines_master_orig.py`)
+```text
+mag-7-sentiment-signals/
+  config/
+    entities_global.yaml          # Global AI buzz phrases/entities, regulatory & macro terms
+    relationships/                # One YAML per ticker (AAPL, MSFT, NVDA, etc.)
+    secrets.env.example           # Template for optional NewsAPI key
+  src/
+    scrapers/                     # TechCrunch, NewsAPI Tech, Google News RSS scrapers
+      base.py
+      techcrunch.py
+      google_news_rss.py
+      newsapi_tech.py
+    matching/                     # Match headlines to tickers and AI relevance (config-driven)
+      config_loader.py
+      matcher.py
+      __init__.py
+    sentiment/                    # VADER + Ollama sentiment; analyst prompt and pipeline
+      vader_scorer.py
+      ollama_scorer.py
+      pipeline.py
+      __init__.py
+    utils.py                      # Shared JSONL and path helpers
+  scripts/
+    run_all_scrapers.py           # Run all three scrapers and write data/raw/headlines_*.jsonl
+    headlines_master_orig.py      # Aggregate all raw into data/cleaned/headlines_master_orig.jsonl
+    run_process.py                # raw -> one processed file (match + sentiment)
+    database.py                   # SQLite schema and helpers for sentiment_scores.db
+  notebooks/
+    sentiment_analysis.ipynb      # Main analysis & plots (including sentiment_scores.png)
+    sentiment_testing.ipynb       # Earlier/scratch exploration for sentiment & flags
+    database_testing.ipynb        # Experiments loading/querying the SQLite DB
+    google_news_test.ipynb        # Google News RSS exploration
+    newsapi_test.ipynb            # NewsAPI Tech exploration
+  data/
+    raw/                          # Scraped headlines (headlines_YYYYMMDD_HH.jsonl)
+    cleaned/                      # processed_<suffix>.jsonl, headlines_master_orig.jsonl
+  visualizations/
+    sentiment_scores.png          # Grouped barplot: average sentiment per ticker and model
+  .github/
+    workflows/
+      run-scrapers.yml            # CI: run scrapers on schedule / manual trigger
+      headlines_master_orig.yml   # CI: update headlines_master_orig after scrapers
+```
 
-Hype Score, prices, and analysis are planned; see PLAN.md.
-
-See **PLAN.md** for hypothesis, architecture, and full pipeline design.
