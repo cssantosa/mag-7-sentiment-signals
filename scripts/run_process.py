@@ -1,8 +1,9 @@
 """
 Run full pipeline: raw headlines -> match -> sentiment -> one processed file.
 
-Reads data/raw/headlines_*.jsonl (latest file by default), runs matching and sentiment
-(VADER + phi3, llama3.2:3b, deepseek-r1:1.5b), writes data/cleaned/processed_<suffix>.jsonl.
+Reads data/raw/headlines_*.csv or legacy headlines_*.jsonl (latest file by default),
+runs matching and sentiment (VADER + phi3, llama3.2:3b, deepseek-r1:1.5b),
+writes data/cleaned/processed_<suffix>.jsonl.
 No intermediate matched_ or sentiment_ files.
 """
 import sys
@@ -14,9 +15,8 @@ sys.path.insert(0, str(ROOT))
 
 from src.utils import (
     DATA_RAW,
-    DATA_CLEANED,
     get_latest_raw_path,
-    load_jsonl_paths,
+    load_headline_paths,
     processed_output_path,
     write_jsonl,
 )
@@ -45,12 +45,12 @@ def main() -> None:
     else:
         raw_path = get_latest_raw_path()
         if not raw_path:
-            print("No data/raw/headlines_*.jsonl found. Run scrapers first.")
+            print("No data/raw/headlines_*.csv or headlines_*.jsonl found. Run scrapers first.")
             sys.exit(1)
         raw_paths = [raw_path]
         print(f"Using latest raw file: {raw_path.name}")
 
-    # Suffix from first raw file (e.g. headlines_20260226_15 -> 20260226_15)
+    # Suffix from first raw file (e.g. headlines_20260317.csv -> 20260317)
     stem = raw_paths[0].stem
     suffix = stem.replace("headlines_", "", 1)
     output_path = processed_output_path(suffix)
@@ -62,7 +62,7 @@ def main() -> None:
         print("  (Ensure Ollama is running with phi3, llama3.2:3b, deepseek-r1:1.5b for LLM scores.)")
 
     start_time = time.time()
-    raw_count = len(load_jsonl_paths(raw_paths))
+    raw_count = len(load_headline_paths(raw_paths))
     matched = run_matching_to_rows(raw_paths)
     full = add_sentiment_to_rows(matched, backends=backends)
     write_jsonl(full, output_path)

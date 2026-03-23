@@ -1,0 +1,45 @@
+# Run scripts/base_data.py after scrapers complete (30-minute buffer).
+# Match raw headlines, keep is_ai_related, dedupe (posted_at, url, ticker) → base_data.jsonl.
+
+name: Update base data
+
+on:
+  workflow_run:
+    workflows: ["Run scrapers"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  update-base-data:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Buffer (30 minutes)
+        run: sleep 1800
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run base_data
+        run: python scripts/base_data.py
+
+      - name: Commit and push base_data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/cleaned/base_data.jsonl
+          git diff --staged --quiet || (git commit -m "Update base_data after scrape" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

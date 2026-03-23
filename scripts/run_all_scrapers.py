@@ -15,7 +15,7 @@ def main():
     print("Running all sources (TechCrunch, NewsAPI, Google News RSS)...")
     articles = scrape_all_sources(save=True)
     print(f"\nOutput saved to: {DATA_RAW}")
-    print("  - headlines_YYYYMMDD.jsonl     (combined, deduped: source, fetched_at, headline, posted_at, reporter, url)")
+    print("  - headlines_YYYYMMDD.csv         (UTC day file; merge + dedupe on repeat runs)")
     return 0
 
 

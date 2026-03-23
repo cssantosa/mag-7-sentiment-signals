@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .config_loader import load_matching_config
-from src.utils import load_jsonl_paths
+from src.utils import load_headline_paths
 
 
 def _normalize(text: str) -> str:
@@ -87,12 +87,12 @@ def run_matching_to_rows(
     config: dict | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Read raw JSONL file(s), match each headline, return matched rows (no file write).
+    Read raw headline file(s) (.csv or .jsonl), match each headline, return matched rows (no file write).
     Use this to chain match -> sentiment -> write one processed file.
     """
     if config is None:
         config = load_matching_config()
-    raw_rows = load_jsonl_paths(raw_paths)
+    raw_rows = load_headline_paths(raw_paths)
     matched = []
     for row in raw_rows:
         matched.extend(match_headline(row, config))
@@ -105,12 +105,12 @@ def run_matching(
     config: dict | None = None,
 ) -> tuple[int, int]:
     """
-    Read raw JSONL file(s), match each headline, write matched rows to output_path JSONL.
+    Read raw headline file(s), match each headline, write matched rows to output_path JSONL.
     Returns (headlines_read, rows_written).
     """
     if config is None:
         config = load_matching_config()
-    raw_rows = load_jsonl_paths(raw_paths)
+    raw_rows = load_headline_paths(raw_paths)
     matched = []
     for row in raw_rows:
         matched.extend(match_headline(row, config))

@@ -63,13 +63,16 @@ Headlines come from three sources:
 **Automated (GitHub Actions)**  
 Two workflows keep raw headlines and the aggregated master file updated:
 
-1. **Run scrapers** (schedule or manual) — Runs `scripts/run_all_scrapers.py`; writes `data/raw/headlines_YYYYMMDD_HH.jsonl`, then commits and pushes. Optionally uploads an artifact.
-2. **Update headlines master** — Runs after scrapers complete (with a delay). Runs `scripts/headlines_master_orig.py`; merges all raw files into `data/cleaned/headlines_master_orig.jsonl`, then commits and pushes.
+1. **Run scrapers** (schedule or manual) — Runs `scripts/run_all_scrapers.py`; appends/merges into `data/raw/headlines_YYYYMMDD.csv` (one file per UTC day; second run that day dedupes by headline+url), then commits and pushes. Optionally uploads an artifact.
+2. **Update base data** — Runs after scrapers complete (with a delay). Runs `scripts/base_data.py`: loads all raw files, runs ticker/AI matching, keeps **`is_ai_related == True`**, dedupes on **`(posted_at, url, ticker)`**, writes `data/cleaned/base_data.jsonl` (full rebuild each run), then commits and pushes.
 
 **Local (manual)**  
-3. **Run processing locally** — Run `python scripts/run_process.py` (or `--backends vader` for VADER-only) to read the latest `data/raw/headlines_*.jsonl`, apply matching + sentiment, and write `data/cleaned/processed_<suffix>.jsonl`.
+3. **Run processing locally** — Run `python scripts/run_process.py` (or `--backends vader` for VADER-only) to read the latest `data/raw/headlines_*.csv` (or legacy `*.jsonl`), apply matching + sentiment, and write `data/cleaned/processed_<suffix>.jsonl` (suffix is the date stem, e.g. `processed_20260317.jsonl`).
 
-4. 
+4. **Legacy JSONL → CSV export** — If you still have old `headlines_*_*.jsonl` files: `python scripts/jsonl_to_csv.py …` / `--all-raw` writes copies under `data/csv/raw/`. New scrapes already save CSV in `data/raw/`.
+
+5. **Normalize per-run CSVs to daily names** — If `data/raw/` has `headlines_YYYYMMDD_HH.csv` exports, run `python scripts/merge_raw_csv_to_daily.py` (optional `--dry-run`) to merge each day into `headlines_YYYYMMDD.csv` and remove the old files.
+
 Additional details:
 
 - Output columns currently include `sentiment_vader`, `sentiment_llm_phi3`, `sentiment_llm_llama3_2`, and `sentiment_llm_deepseek_r1`, all on the [-1, 1] scale.
@@ -139,10 +142,10 @@ mag-7-sentiment-signals/
       ollama_scorer.py
       pipeline.py
       __init__.py
-    utils.py                      # Shared JSONL and path helpers
+    utils.py                      # Shared loaders (CSV/JSONL) and path helpers
   scripts/
-    run_all_scrapers.py           # Run all three scrapers and write data/raw/headlines_*.jsonl
-    headlines_master_orig.py      # Aggregate all raw into data/cleaned/headlines_master_orig.jsonl
+    run_all_scrapers.py           # Run all three scrapers and write data/raw/headlines_YYYYMMDD.csv
+    base_data.py                  # Raw → match → AI-only → dedupe → data/cleaned/base_data.jsonl
     run_process.py                # raw -> one processed file (match + sentiment)
     database.py                   # SQLite schema and helpers for sentiment_scores.db
   notebooks/
@@ -152,13 +155,13 @@ mag-7-sentiment-signals/
     google_news_test.ipynb        # Google News RSS exploration
     newsapi_test.ipynb            # NewsAPI Tech exploration
   data/
-    raw/                          # Scraped headlines (headlines_YYYYMMDD_HH.jsonl)
-    cleaned/                      # processed_<suffix>.jsonl, headlines_master_orig.jsonl
+    raw/                          # Scraped headlines (headlines_YYYYMMDD.csv; legacy *.jsonl)
+    cleaned/                      # processed_<suffix>.jsonl, base_data.jsonl
   visualizations/
     sentiment_scores.png          # Grouped barplot: average sentiment per ticker and model
   .github/
     workflows/
       run-scrapers.yml            # CI: run scrapers on schedule / manual trigger
-      headlines_master_orig.yml   # CI: update headlines_master_orig after scrapers
+      base_data.yml                 # CI: update base_data.jsonl after scrapers
 ```
 

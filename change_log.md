@@ -1,5 +1,23 @@
 # Change log
 
+## 2026-03-23 - base_data: AI-only matched rows
+
+- **`base_data.jsonl`:** Built by matching all raw headlines, filtering to **`is_ai_related == True`**, deduping on **`(posted_at, url, ticker)`**, then sorting. Full rebuild each `scripts/base_data.py` run (no incremental append).
+
+## 2026-03-23 - Rename raw aggregate to base_data
+
+- **File:** `data/cleaned/headlines_master_orig.jsonl` → `data/cleaned/base_data.jsonl`.
+- **Script:** `scripts/headlines_master_orig.py` → `scripts/base_data.py`.
+- **Utils:** `RAW_MASTER_PATH` → `BASE_DATA_PATH` in `src/utils.py`.
+- **CI:** `.github/workflows/headlines_master_orig.yml` → `base_data.yml` (workflow name: "Update base data").
+
+## 2026-03-17 - Raw scrapes as daily CSV
+
+- **Scraper output:** `save_raw_jsonl` replaced with `save_raw_daily_csv` in `src/scrapers/base.py`. Each run writes/merges `data/raw/headlines_YYYYMMDD.csv` (UTC date). If the file already exists, new rows are concatenated, deduped by `(headline, url)` (first row kept), sorted by `posted_at` then `headline`, then saved via a temp file + atomic replace.
+- **Loaders:** `src/utils.py` adds `load_csv`, `load_headline_paths`, `iter_raw_headline_paths`; `get_latest_raw_path` considers both `headlines_*.csv` and legacy `headlines_*.jsonl`.
+- **Pipeline:** `base_data.py` (formerly headlines master), `run_process.py`, and `matcher.py` use `load_headline_paths` / unified raw listing so legacy JSONL still aggregates until removed.
+- **CI:** `.github/workflows/run-scrapers.yml` artifacts and `git add` target `data/raw/headlines_*.csv`.
+
 ## 2026-02-25 - Project Start
 - **Scrapers:** Tried Bloomberg and Reuters scraping/RSS, but the sources either didn’t work or triggered a slider CAPTCHA. After undetected-chromedriver also failed, we stopped investing time in that approach and dropped Selenium entirely.
 - **Sentiment strategy:** Dual approach documented: (1) **VADER** on headlines (and optionally snippets), score in [-1, 1]; (2) **LLM** via a single prompt (e.g. "Rate sentiment for this tech/AI headline from -1 to 1"), parse numeric score, same scale. Both outputs stored per headline so Hype Score and analysis can use either method and results can be compared.

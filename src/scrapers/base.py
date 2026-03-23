@@ -1,16 +1,18 @@
-"""Base scraper: fetch, parse, timestamp extraction, rate limiting, dedup, save to JSONL."""
-import json
+"""Base scraper: fetch, parse, timestamp extraction, rate limiting, dedup, save daily CSV."""
 import re
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
 DATA_RAW = Path(__file__).resolve().parent.parent.parent / "data" / "raw"
 DATA_RAW.mkdir(parents=True, exist_ok=True)
+
+RAW_ROW_COLUMNS = ["source", "fetched_at", "headline", "posted_at", "reporter", "url"]
 
 
 @dataclass
@@ -49,23 +51,53 @@ def deduplicate(articles: list[RawArticle]) -> list[RawArticle]:
     return out
 
 
-def save_raw_jsonl(articles: list[RawArticle], suffix: str = "") -> Path:
-    """Save to data/raw/headlines_YYYYMMDD_HH[suffix].jsonl. Schema: source, fetched_at, headline, posted_at, reporter, url (no snippet). One file per run (hour in UTC) for two runs per day."""
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H")
-    fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    name = f"headlines_{date_str}{suffix}.jsonl"
-    path = DATA_RAW / name
-    with open(path, "w", encoding="utf-8") as f:
-        for a in articles:
-            row = {
-                "source": a.pipeline_source or "unknown",
-                "fetched_at": fetched_at,
-                "headline": a.headline,
-                "posted_at": a.timestamp,
-                "reporter": a.source,
-                "url": a.url,
-            }
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+def save_raw_daily_csv(articles: list[RawArticle], suffix: str = "") -> Path:
+    """
+    Append-merge into data/raw/headlines_YYYYMMDD[suffix].csv (UTC calendar day).
+    Schema: source, fetched_at, headline, posted_at, reporter, url.
+    If the file exists, read it, concat new rows, dedupe by (headline, url) keeping first,
+    sort by posted_at then headline, then atomically overwrite.
+    """
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%Y%m%d")
+    fetched_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    path = DATA_RAW / f"headlines_{date_str}{suffix}.csv"
+
+    new_rows = [
+        {
+            "source": a.pipeline_source or "unknown",
+            "fetched_at": fetched_at,
+            "headline": a.headline,
+            "posted_at": a.timestamp,
+            "reporter": a.source,
+            "url": a.url,
+        }
+        for a in articles
+    ]
+    new_df = pd.DataFrame(new_rows, columns=RAW_ROW_COLUMNS)
+
+    if not new_rows and path.exists():
+        return path
+
+    if path.exists() and path.stat().st_size > 0:
+        old_df = pd.read_csv(
+            path, encoding="utf-8", dtype=str, keep_default_na=False, na_filter=False
+        )
+        for col in RAW_ROW_COLUMNS:
+            if col not in old_df.columns:
+                old_df[col] = ""
+        old_df = old_df[RAW_ROW_COLUMNS]
+        combined = pd.concat([old_df, new_df], ignore_index=True)
+        combined = combined.drop_duplicates(subset=["headline", "url"], keep="first")
+        combined = combined.sort_values(
+            by=["posted_at", "headline"], kind="mergesort"
+        ).reset_index(drop=True)
+    else:
+        combined = new_df
+
+    tmp_path = path.parent / f"{path.name}.tmp"
+    combined.to_csv(tmp_path, index=False, encoding="utf-8")
+    tmp_path.replace(path)
     return path
 
 
@@ -126,6 +158,6 @@ def scrape_all_sources(save: bool = True, limit_per_source: int = 100) -> list[R
     n_tc, n_newsapi, n_google = len(tc), len(newsapi), len(google_news)
     all_articles = deduplicate(all_articles)
     if save:
-        save_raw_jsonl(all_articles)
+        save_raw_daily_csv(all_articles)
     print(f"  Before dedup: TechCrunch {n_tc}, NewsAPI {n_newsapi}, Google News {n_google}  |  After dedup: {len(all_articles)}")
     return all_articles
