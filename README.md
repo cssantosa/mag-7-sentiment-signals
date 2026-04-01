@@ -87,7 +87,7 @@ Additional details:
   - Visualizes backends with heatmaps and grouped bar charts to compare FinBERT vs the three LLMs at the ticker level.
   - Includes a section that inspects DeepSeek-R1 versus other models (e.g., on TSLA and META) and prints raw DeepSeek-R1 responses for contrarian headlines to understand its reasoning.
 
-  **Average sentiment per ticker and sentiment score (AI-related headlines):**
+  **Average sentiment per ticker and sentiment score (February 26):**
 
   ![Average sentiment per ticker and sentiment score](visualizations/sentiment_scores.png)
 
