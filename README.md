@@ -4,7 +4,7 @@
 - **Purpose 2:** Compare small local LLMs (phi3, llama3.2:3b, deepseek-r1:1.5b) on performance for sentiment analysis of those headlines.
 - **Purpose 3 (tentative):** Test whether suppliers (e.g. NVDA) or consumers (e.g. META) lead in sentiment-return dynamics (bullwhip analysis).
 
-Phase 1 of the pipeline is live: scrapers run to collect headlines, `run_process.py` applies matching and sentiment, and per-headline scores from FinBERT and three small LLMs are written to `data/cleaned/processed_*.jsonl` and explored in notebooks to compare backends and ticker-level sentiment patterns.
+Phase 1 of the pipeline is live: scrapers run to collect headlines, `run_process.py` applies FinBERT and three small LLM sentiment backends, and per-headline scores are written to `data/cleaned/processed_*.jsonl`. Phase 2 analysis is underway: sentiment scores have been aligned with stock price data to test return predictability across multiple horizons.
 
 ## Setup
 
@@ -64,7 +64,7 @@ Headlines come from three sources:
 Two workflows keep raw headlines and the aggregated master file updated:
 
 1. **Run scrapers** (schedule or manual) — Runs `scripts/run_all_scrapers.py`; appends/merges into `data/raw/headlines_YYYYMMDD.csv` (one file per UTC day; second run that day dedupes by headline+url), then commits and pushes. Optionally uploads an artifact.
-2. **Update base data** — Runs after scrapers complete (with a delay). Runs `scripts/base_data.py`: loads all raw files, runs ticker/AI matching, keeps **`is_ai_related == True`**, dedupes on **`(posted_at, url, ticker)`**, writes `data/cleaned/base_data.jsonl` (full rebuild each run), then commits and pushes.
+2. **Update base data** — Runs after scrapers complete (with a delay). Runs `scripts/base_data.py`: loads all raw files, runs ticker/AI matching, keeps **`is_ai_related == True`**, dedupes on **`(posted_at, url, ticker)`**, writes `data/cleaned/base_data.csv` (full rebuild each run), then commits and pushes.
 
 **Local (manual)**  
 3. **Run processing locally** — Run `python scripts/run_process.py` (or `--backends finbert` for FinBERT-only) to read `data/cleaned/base_data.csv`, apply sentiment, and write `data/cleaned/processed_<suffix>.jsonl`.
@@ -82,7 +82,7 @@ Additional details:
 ## Analysis & notebooks
 
 - **`notebooks/sentiment_analysis.ipynb`**
-  - Loads `data/cleaned/processed_master_orig.jsonl` (or the latest `processed_*.jsonl`) into a Pandas DataFrame.
+  - Loads `data/cleaned/processed_*.jsonl` into a Pandas DataFrame.
   - Computes ticker-level average sentiment across all headlines and an AI-related-only subset (`is_ai_related == True`).
   - Visualizes backends with heatmaps and grouped bar charts to compare FinBERT vs the three LLMs at the ticker level.
   - Includes a section that inspects DeepSeek-R1 versus other models (e.g., on TSLA and META) and prints raw DeepSeek-R1 responses for contrarian headlines to understand its reasoning.
@@ -93,31 +93,66 @@ Additional details:
 
 DeepSeek-R1 has shown more contrarian behavior on some names (e.g., TSLA and META); inspecting its raw responses in the notebook suggests this is due to different but coherent reasoning rather than a pipeline or parsing bug.
 
-## LLM-FinBERT delta metrics
+---
 
-LLM-FinBERT deltas are simple per-headline spreads that measure how far each LLM moves away from the FinBERT baseline on the same [-1, 1] scale. In notebooks, variables such as:
+- **`notebooks/sentiment_timeseries - small.ipynb`**
+  - Aligns daily-averaged sentiment scores with stock price data (via `yfinance`) using `pd.merge_asof` to map each sentiment event to the next available trading day.
+  - Calculates EOD, 1D, 3D, 5D, and 7D forward returns for each ticker, plus excess returns (ticker return minus cross-ticker market average) to isolate the sentiment signal from broad market trends.
+  - Runs four analyses:
 
-- `phi3_minus_finbert = sentiment_llm_phi3 - sentiment_finbert`
-- `llama_minus_finbert = sentiment_llm_llama3_2 - sentiment_finbert`
-- `deepseek_minus_finbert = sentiment_llm_deepseek_r1 - sentiment_finbert`
+  **1. Correlation Analysis**
+  Computes per-ticker, per-model Pearson correlations between daily-average sentiment and forward returns across all five horizons.
+  - Short-horizon sentiment is broadly contrarian — positive headlines are consistently followed by next-day underperformance, consistent with a "buy the rumor, sell the news" dynamic where traders position ahead of expected good news and sell into the headline
+  - AAPL is the clearest delayed-positive signal, negative at 1D but strongly positive at 3D–7D across multiple models
+  - MSFT and AMZN are persistently contrarian across all horizons; META and GOOGL flip positive at 5D–7D
+  - llama3.2 produces the highest-magnitude correlations overall
 
-are used to explore disagreement between models. Aggregating these deltas by ticker and/or time (e.g., mean and mean absolute spread per ticker) helps quantify disagreement and model behavior. FinBERT is treated as a baseline/control, and LLM deltas are used as:
+  ![FinBERT Correlation by Ticker](visualizations/finbert_corr_by_ticker.png)
 
-- **Quality checks**: flagging headlines or tickers where LLMs strongly disagree with FinBERT or with each other.
-- **Research features**: candidate inputs for future predictive models alongside raw sentiment scores.
+  **2. Delta Analysis**
+  Measures per-day divergence between each LLM and FinBERT (e.g. `phi_delta = phi3_avg - finbert_avg`) and correlates those deltas with forward returns.
+  - `phi_delta` and `llama_delta` are the most informative features — both strongly negative at 1D, meaning when LLMs are more bullish than FinBERT, next-day returns underperform (a contrarian signal)
+  - `llama_delta` is the strongest single delta signal, persistently negative from 1D through 7D
+  - `delta_sum` (all LLMs vs FinBERT combined) shows a positive 1D anomaly; collective disagreement may signal brief uncertainty that resolves upward
+  - Raw cross-LLM spread (`llm_spread`) is near-neutral and uninformative on its own
 
-### Planned delta visualizations
+  ![Delta Correlation Heatmap](visualizations/delta_corr_heatmap.png)
 
-Planned delta/spread visualizations include:
+  **3. Quintile Analysis**
+  Bins daily-average sentiment (and day-over-day sentiment change) into quintiles and plots mean excess forward return per quintile.
+  - Neutral sentiment (Q3) outperforms all other quintiles at 3D–7D; sentiment extremes in either direction underperform
+  - No monotonic Q1→Q5 pattern exists — the market does not reward increasingly positive sentiment at any horizon
+  - Sentiment change (momentum) is more informative than level: moderate sentiment decline (Q2) is the strongest buy signal at 3D–7D; rising sentiment (Q4/Q5) acts as a contrarian sell signal
 
-- **Per-ticker plots** of mean sentiment per backend alongside mean spread versus FinBERT.
-- **Distribution plots** (histograms or violin plots) of delta values to quantify disagreement across headlines and tickers.
-- **Time-series charts** of sentiment and deltas around notable events (once price data is wired in).
+  *Sentiment level quintiles:*
 
-These views will support defining confidence regimes (for example, trusting signals more when FinBERT and LLMs agree in sign and the absolute spread is small) and selecting backends or ensembles for Phase 2 modeling and backtests.
+  ![FinBERT Quintile Level](visualizations/quintile_finbert_level.png)
+  ![phi3 Quintile Level](visualizations/quintile_phi3_level.png)
+  ![llama3.2 Quintile Level](visualizations/quintile_llama3_level.png)
+  ![DeepSeek-R1 Quintile Level](visualizations/quintile_deepseek_level.png)
+
+  *Sentiment change quintiles:*
+
+  ![FinBERT Quintile Change](visualizations/quintile_finbert_change.png)
+  ![phi3 Quintile Change](visualizations/quintile_phi3_change.png)
+  ![llama3.2 Quintile Change](visualizations/quintile_llama3_change.png)
+  ![DeepSeek-R1 Quintile Change](visualizations/quintile_deepseek_change.png)
+
+  **4. Hit Rate Analysis**
+  Measures directional accuracy — how often the sign of daily-average sentiment correctly predicts the sign of forward returns.
+  - All tickers and all horizons are below 50%; FinBERT sentiment is a consistent contrarian indicator
+  - Hit rates worsen at longer horizons (e.g. MSFT drops from ~42% at EOD to ~14% at 7D)
+  - The signal is most useful when inverted — treating high positive sentiment as a short-term bearish overlay is consistent across all four analyses
+
+  ![FinBERT Hit Rate](visualizations/hit_rate_finbert.png)
+  ![phi3 Hit Rate](visualizations/hit_rate_phi3.png)
+  ![llama3.2 Hit Rate](visualizations/hit_rate_llama3.png)
+  ![DeepSeek-R1 Hit Rate](visualizations/hit_rate_deepseek.png)
 
 ## Next Steps
-Looking into analyzing sentiment scores of FinBERT and the LLMs and once there's enough time data pulled from the workflow, I'll start looking into a predictive model.
+- Re-run the full analysis with larger models (`qwen2.5:7b`, `llama3.1:8b`, `mistral:7b`) to test whether model quality improves sentiment-return correlations.
+- Continue collecting data — current findings are based on ~35 days; patterns should be validated over 3–6 months before drawing strong conclusions.
+- Explore predictive modeling (e.g. feature-based classifiers) once sufficient time-series data is available.
 
 ## Project layout
 
@@ -145,23 +180,38 @@ mag-7-sentiment-signals/
     utils.py                      # Shared loaders (CSV/JSONL) and path helpers
   scripts/
     run_all_scrapers.py           # Run all three scrapers and write data/raw/headlines_YYYYMMDD.csv
-    base_data.py                  # Raw → match → AI-only → dedupe → data/cleaned/base_data.jsonl
+    base_data.py                  # Raw → match → AI-only → dedupe → data/cleaned/base_data.csv
     run_process.py                # raw -> one processed file (match + sentiment)
     database.py                   # SQLite schema and helpers for sentiment_scores.db
   notebooks/
-    sentiment_analysis.ipynb      # Main analysis & plots (including sentiment_scores.png)
-    sentiment_testing.ipynb       # Earlier/scratch exploration for sentiment & flags
-    database_testing.ipynb        # Experiments loading/querying the SQLite DB
-    google_news_test.ipynb        # Google News RSS exploration
-    newsapi_test.ipynb            # NewsAPI Tech exploration
+    sentiment_analysis.ipynb              # Ticker-level sentiment comparison across backends
+    sentiment_timeseries - small.ipynb    # Sentiment-return analysis: correlations, deltas, quintiles, hit rates
+    sentiment_testing.ipynb               # Earlier/scratch exploration for sentiment & flags
+    database_testing.ipynb                # Experiments loading/querying the SQLite DB
+    google_news_test.ipynb                # Google News RSS exploration
+    newsapi_test.ipynb                    # NewsAPI Tech exploration
   data/
     raw/                          # Scraped headlines (headlines_YYYYMMDD.csv; legacy *.jsonl)
-    cleaned/                      # processed_<suffix>.jsonl, base_data.jsonl
+    cleaned/                      # processed_<suffix>.jsonl, base_data.csv
   visualizations/
     sentiment_scores.png          # Grouped barplot: average sentiment per ticker and model
+    finbert_corr_by_ticker.png    # FinBERT sentiment-return correlation heatmap by ticker
+    delta_corr_heatmap.png        # LLM-FinBERT delta vs return correlation heatmap
+    quintile_finbert_level.png    # FinBERT sentiment level quintile excess returns
+    quintile_phi3_level.png       # phi3 sentiment level quintile excess returns
+    quintile_llama3_level.png     # llama3.2 sentiment level quintile excess returns
+    quintile_deepseek_level.png   # DeepSeek-R1 sentiment level quintile excess returns
+    quintile_finbert_change.png   # FinBERT sentiment change quintile excess returns
+    quintile_phi3_change.png      # phi3 sentiment change quintile excess returns
+    quintile_llama3_change.png    # llama3.2 sentiment change quintile excess returns
+    quintile_deepseek_change.png  # DeepSeek-R1 sentiment change quintile excess returns
+    hit_rate_finbert.png          # FinBERT directional hit rate heatmap by ticker and horizon
+    hit_rate_phi3.png             # phi3 directional hit rate heatmap by ticker and horizon
+    hit_rate_llama3.png           # llama3.2 directional hit rate heatmap by ticker and horizon
+    hit_rate_deepseek.png         # DeepSeek-R1 directional hit rate heatmap by ticker and horizon
   .github/
     workflows/
       run-scrapers.yml            # CI: run scrapers on schedule / manual trigger
-      base_data.yml                 # CI: update base_data.jsonl after scrapers
+      base_data.yml                 # CI: update base_data.csv after scrapers
 ```
 
