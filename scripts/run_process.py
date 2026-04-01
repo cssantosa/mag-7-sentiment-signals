@@ -1,30 +1,27 @@
 """
-Run full pipeline: raw headlines -> match -> sentiment -> one processed file.
+Run sentiment pipeline from base data to one processed file.
 
-Reads data/raw/headlines_*.csv or legacy headlines_*.jsonl (latest file by default),
-runs matching and sentiment (VADER + phi3, llama3.2:3b, deepseek-r1:1.5b),
+Reads data/cleaned/base_data.csv by default (or a custom CSV path),
+runs sentiment (FinBERT + phi3, llama3.2:3b, deepseek-r1:1.5b),
 writes data/cleaned/processed_<suffix>.jsonl.
-No intermediate matched_ or sentiment_ files.
 """
 import sys
 from pathlib import Path
-import time 
+import time
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.utils import (
-    DATA_RAW,
-    get_latest_raw_path,
-    load_headline_paths,
+    DATA_CLEANED,
+    load_csv,
     processed_output_path,
     write_jsonl,
 )
-from src.matching import run_matching_to_rows
 from src.sentiment import add_sentiment_to_rows
 
-# Default: all backends. Set to ["vader"] for fast run without LLMs.
-DEFAULT_BACKENDS = ["vader", "phi3", "llama3.2:3b", "deepseek-r1:1.5b"]
+# Default: all backends. Set to ["finbert"] for fast run without LLMs.
+DEFAULT_BACKENDS = ["finbert", "phi3", "llama3.2:3b", "deepseek-r1:1.5b"]
 
 
 def main() -> None:
@@ -35,40 +32,32 @@ def main() -> None:
         if i + 1 < len(argv):
             backends = [b.strip() for b in argv[i + 1].split(",") if b.strip()]
         argv = argv[:i] + argv[i + 2 :]
-    raw_glob = argv[0] if argv else None
+    input_csv = argv[0] if argv else str(DATA_CLEANED / "base_data.csv")
+    input_path = Path(input_csv)
+    if not input_path.is_absolute():
+        input_path = (ROOT / input_path).resolve()
+    if not input_path.exists():
+        print(f"Input file not found: {input_path}")
+        print("Run scripts/base_data.py first, or pass a valid CSV path.")
+        sys.exit(1)
 
-    if raw_glob:
-        raw_paths = sorted(ROOT.glob(raw_glob))
-        raw_paths = [p for p in raw_paths if p.is_file()]
-        if not raw_paths:
-            raw_paths = sorted(DATA_RAW.glob(Path(raw_glob).name))
-    else:
-        raw_path = get_latest_raw_path()
-        if not raw_path:
-            print("No data/raw/headlines_*.csv or headlines_*.jsonl found. Run scrapers first.")
-            sys.exit(1)
-        raw_paths = [raw_path]
-        print(f"Using latest raw file: {raw_path.name}")
-
-    # Suffix from first raw file (e.g. headlines_20260317.csv -> 20260317)
-    stem = raw_paths[0].stem
+    stem = input_path.stem
     suffix = stem.replace("headlines_", "", 1)
     output_path = processed_output_path(suffix)
+    print(f"Using input file: {input_path.name}")
 
     print(f"Sentiment backends: {', '.join(backends)}")
-    if "vader" in backends and len(backends) == 1:
-        print("  (VADER-only run; use no --backends for full LLM run.)")
-    elif any(b != "vader" for b in backends):
+    if "finbert" in backends and len(backends) == 1:
+        print("  (FinBERT-only run; use no --backends for full LLM run.)")
+    elif any(b != "finbert" for b in backends):
         print("  (Ensure Ollama is running with phi3, llama3.2:3b, deepseek-r1:1.5b for LLM scores.)")
 
     start_time = time.time()
-    raw_count = len(load_headline_paths(raw_paths))
-    matched = run_matching_to_rows(raw_paths)
-    full = add_sentiment_to_rows(matched, backends=backends)
+    base_rows = load_csv(input_path)
+    full = add_sentiment_to_rows(base_rows, backends=backends)
     write_jsonl(full, output_path)
 
-    print(f"Raw headlines read: {raw_count}")
-    print(f"Matched rows: {len(matched)}")
+    print(f"Rows read: {len(base_rows)}")
     print(f"Output: {output_path}")
     print(f"Rows written: {len(full)}")
     print(f"Time taken: {time.time() - start_time:.2f} seconds")

@@ -6,13 +6,13 @@ pyyaml>=6.0
 pandas>=2.0.0
 numpy>=1.24.0
 yfinance>=0.2.28
-vaderSentiment>=3.3.2
+transformers>=4.30.0
+torch>=2.2.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 scipy>=1.10.0
 xgboost>=2.0.0
 feedparser>=6.0.10
 newsapi-python>=0.2.6
-# Optional: LLM sentiment
+# Optional: external LLM sentiment
 # openai>=1.0.0
-# transformers>=4.30.0

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS sentiment_scores (
     ticker TEXT NOT NULL,
     is_ai_related INTEGER,
     is_proxy_partnership INTEGER,
-    sentiment_vader REAL,
+    sentiment_finbert REAL,
     sentiment_llm_phi3 REAL,
     sentiment_llm_llama3_2 REAL,
     sentiment_llm_deepseek_r1 REAL,
@@ -39,6 +39,10 @@ def get_connection() -> sqlite3.Connection:
 def init_db(conn: sqlite3.Connection) -> None:
     """Create sentiment_scores table if it does not exist."""
     conn.execute(CREATE_TABLE)
+    # Lightweight migration for existing DBs that still have sentiment_vader only.
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(sentiment_scores)").fetchall()]
+    if "sentiment_finbert" not in cols:
+        conn.execute("ALTER TABLE sentiment_scores ADD COLUMN sentiment_finbert REAL")
     conn.commit()
 
 
@@ -56,7 +60,7 @@ def _row_to_tuple(row: dict) -> tuple:
         row.get("ticker") or "",
         b(row.get("is_ai_related")),
         b(row.get("is_proxy_partnership")),
-        row.get("sentiment_vader"),
+        row.get("sentiment_finbert"),
         row.get("sentiment_llm_phi3"),
         row.get("sentiment_llm_llama3_2"),
         row.get("sentiment_llm_deepseek_r1"),
@@ -75,7 +79,7 @@ def insert_processed_rows(conn: sqlite3.Connection, rows: list[dict]) -> int:
     cols = (
         "posted_at", "fetched_at", "headline", "url", "source", "reporter",
         "ticker", "is_ai_related", "is_proxy_partnership",
-        "sentiment_vader", "sentiment_llm_phi3", "sentiment_llm_llama3_2", "sentiment_llm_deepseek_r1",
+        "sentiment_finbert", "sentiment_llm_phi3", "sentiment_llm_llama3_2", "sentiment_llm_deepseek_r1",
     )
     placeholders = ", ".join("?" for _ in cols)
     sql = f"INSERT OR IGNORE INTO sentiment_scores ({', '.join(cols)}) VALUES ({placeholders})"

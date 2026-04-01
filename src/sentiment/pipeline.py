@@ -2,12 +2,12 @@
 from pathlib import Path
 from typing import Any
 
-from .vader_scorer import score_vader
+from .finbert_scorer import score_finbert
 from .ollama_scorer import score_ollama
 
-# Backend id -> (output key, scorer: "vader" | model name for Ollama)
+# Backend id -> (output key, scorer: "finbert" | model name for Ollama)
 BACKENDS: dict[str, tuple[str, str]] = {
-    "vader": ("sentiment_vader", "vader"),
+    "finbert": ("sentiment_finbert", "finbert"),
     "phi3": ("sentiment_llm_phi3", "phi3"),
     "llama3.2:3b": ("sentiment_llm_llama3_2", "llama3.2:3b"),
     "deepseek-r1:1.5b": ("sentiment_llm_deepseek_r1", "deepseek-r1:1.5b"),
@@ -29,8 +29,8 @@ def _score_unique_headlines(
             continue
         out_key, scorer_spec = BACKENDS[backend_id]
         for headline in unique_headlines:
-            if scorer_spec == "vader":
-                score = score_vader(headline)
+            if scorer_spec == "finbert":
+                score = score_finbert(headline)
             else:
                 context = None
                 if headline_to_tickers and matching_config:

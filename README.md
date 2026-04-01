@@ -4,7 +4,7 @@
 - **Purpose 2:** Compare small local LLMs (phi3, llama3.2:3b, deepseek-r1:1.5b) on performance for sentiment analysis of those headlines.
 - **Purpose 3 (tentative):** Test whether suppliers (e.g. NVDA) or consumers (e.g. META) lead in sentiment-return dynamics (bullwhip analysis).
 
-Phase 1 of the pipeline is live: scrapers run to collect headlines, `run_process.py` applies matching and sentiment, and per-headline scores from VADER and three small LLMs are written to `data/cleaned/processed_*.jsonl` and explored in notebooks to compare backends and ticker-level sentiment patterns.
+Phase 1 of the pipeline is live: scrapers run to collect headlines, `run_process.py` applies matching and sentiment, and per-headline scores from FinBERT and three small LLMs are written to `data/cleaned/processed_*.jsonl` and explored in notebooks to compare backends and ticker-level sentiment patterns.
 
 ## Setup
 
@@ -23,7 +23,7 @@ pip install -r requirements.txt
 pip install -r requirements.txt
 ```
 
-Dependencies (see `requirements.txt`): feedparser, requests, beautifulsoup4, lxml, pyyaml, pandas, numpy, yfinance, vaderSentiment, matplotlib, seaborn, scipy, xgboost, newsapi-python. 
+Dependencies (see `requirements.txt`): feedparser, requests, beautifulsoup4, lxml, pyyaml, pandas, numpy, yfinance, transformers, torch, matplotlib, seaborn, scipy, xgboost, newsapi-python.
 
 
 ### Ollama (optional, for local LLM sentiment)
@@ -37,10 +37,10 @@ ollama pull deepseek-r1:1.5b
 
 Make sure Ollama is running before running the LLM backends.
 
-### Run without LLMs (VADER only)
+### Run without LLMs (FinBERT only)
 
 ```bash
-python scripts/run_process.py --backends vader
+python scripts/run_process.py --backends finbert
 ```
 
 ## Config
@@ -67,7 +67,7 @@ Two workflows keep raw headlines and the aggregated master file updated:
 2. **Update base data** — Runs after scrapers complete (with a delay). Runs `scripts/base_data.py`: loads all raw files, runs ticker/AI matching, keeps **`is_ai_related == True`**, dedupes on **`(posted_at, url, ticker)`**, writes `data/cleaned/base_data.jsonl` (full rebuild each run), then commits and pushes.
 
 **Local (manual)**  
-3. **Run processing locally** — Run `python scripts/run_process.py` (or `--backends vader` for VADER-only) to read the latest `data/raw/headlines_*.csv` (or legacy `*.jsonl`), apply matching + sentiment, and write `data/cleaned/processed_<suffix>.jsonl` (suffix is the date stem, e.g. `processed_20260317.jsonl`).
+3. **Run processing locally** — Run `python scripts/run_process.py` (or `--backends finbert` for FinBERT-only) to read `data/cleaned/base_data.csv`, apply sentiment, and write `data/cleaned/processed_<suffix>.jsonl`.
 
 4. **Legacy JSONL → CSV export** — If you still have old `headlines_*_*.jsonl` files: `python scripts/jsonl_to_csv.py …` / `--all-raw` writes copies under `data/csv/raw/`. New scrapes already save CSV in `data/raw/`.
 
@@ -75,16 +75,16 @@ Two workflows keep raw headlines and the aggregated master file updated:
 
 Additional details:
 
-- Output columns currently include `sentiment_vader`, `sentiment_llm_phi3`, `sentiment_llm_llama3_2`, and `sentiment_llm_deepseek_r1`, all on the [-1, 1] scale.
+- Output columns currently include `sentiment_finbert`, `sentiment_llm_phi3`, `sentiment_llm_llama3_2`, and `sentiment_llm_deepseek_r1`, all on the [-1, 1] scale.
 - Matching uses the YAML configuration in `config/entities_global.yaml` and `config/relationships/*` to derive ticker/AI flags and injects that context into the LLM sentiment prompt.
-- You can control which sentiment backends run via `--backends`, e.g. `python scripts/run_process.py --backends vader` for a fast VADER-only test.
+- You can control which sentiment backends run via `--backends`, e.g. `python scripts/run_process.py --backends finbert` for a fast FinBERT-only test.
 
 ## Analysis & notebooks
 
 - **`notebooks/sentiment_analysis.ipynb`**
   - Loads `data/cleaned/processed_master_orig.jsonl` (or the latest `processed_*.jsonl`) into a Pandas DataFrame.
   - Computes ticker-level average sentiment across all headlines and an AI-related-only subset (`is_ai_related == True`).
-  - Visualizes backends with heatmaps and grouped bar charts to compare VADER vs the three LLMs at the ticker level.
+  - Visualizes backends with heatmaps and grouped bar charts to compare FinBERT vs the three LLMs at the ticker level.
   - Includes a section that inspects DeepSeek-R1 versus other models (e.g., on TSLA and META) and prints raw DeepSeek-R1 responses for contrarian headlines to understand its reasoning.
 
   **Average sentiment per ticker and sentiment score (AI-related headlines):**
@@ -93,31 +93,31 @@ Additional details:
 
 DeepSeek-R1 has shown more contrarian behavior on some names (e.g., TSLA and META); inspecting its raw responses in the notebook suggests this is due to different but coherent reasoning rather than a pipeline or parsing bug.
 
-## LLM–VADER delta metrics
+## LLM-FinBERT delta metrics
 
-LLM–VADER deltas are simple per-headline spreads that measure how far each LLM moves away from the VADER baseline on the same [-1, 1] scale. In notebooks, variables such as:
+LLM-FinBERT deltas are simple per-headline spreads that measure how far each LLM moves away from the FinBERT baseline on the same [-1, 1] scale. In notebooks, variables such as:
 
-- `phi3_minus_vader = sentiment_llm_phi3 - sentiment_vader`
-- `llama_minus_vader = sentiment_llm_llama3_2 - sentiment_vader`
-- `deepseek_minus_vader = sentiment_llm_deepseek_r1 - sentiment_vader`
+- `phi3_minus_finbert = sentiment_llm_phi3 - sentiment_finbert`
+- `llama_minus_finbert = sentiment_llm_llama3_2 - sentiment_finbert`
+- `deepseek_minus_finbert = sentiment_llm_deepseek_r1 - sentiment_finbert`
 
-are used to explore disagreement between models. Aggregating these deltas by ticker and/or time (e.g., mean and mean absolute spread per ticker) helps quantify disagreement and model behavior. VADER is treated as a baseline/control, and LLM deltas are used as:
+are used to explore disagreement between models. Aggregating these deltas by ticker and/or time (e.g., mean and mean absolute spread per ticker) helps quantify disagreement and model behavior. FinBERT is treated as a baseline/control, and LLM deltas are used as:
 
-- **Quality checks**: flagging headlines or tickers where LLMs strongly disagree with VADER or with each other.
+- **Quality checks**: flagging headlines or tickers where LLMs strongly disagree with FinBERT or with each other.
 - **Research features**: candidate inputs for future predictive models alongside raw sentiment scores.
 
 ### Planned delta visualizations
 
 Planned delta/spread visualizations include:
 
-- **Per-ticker plots** of mean sentiment per backend alongside mean spread versus VADER.
+- **Per-ticker plots** of mean sentiment per backend alongside mean spread versus FinBERT.
 - **Distribution plots** (histograms or violin plots) of delta values to quantify disagreement across headlines and tickers.
 - **Time-series charts** of sentiment and deltas around notable events (once price data is wired in).
 
-These views will support defining confidence regimes (for example, trusting signals more when VADER and LLMs agree in sign and the absolute spread is small) and selecting backends or ensembles for Phase 2 modeling and backtests.
+These views will support defining confidence regimes (for example, trusting signals more when FinBERT and LLMs agree in sign and the absolute spread is small) and selecting backends or ensembles for Phase 2 modeling and backtests.
 
 ## Next Steps
-Looking into analyzing sentiment scores of VADER and the llms and once there's enough time data pulled from the workflow, I'll start looking into a predictive model
+Looking into analyzing sentiment scores of FinBERT and the LLMs and once there's enough time data pulled from the workflow, I'll start looking into a predictive model.
 
 ## Project layout
 
@@ -137,8 +137,8 @@ mag-7-sentiment-signals/
       config_loader.py
       matcher.py
       __init__.py
-    sentiment/                    # VADER + Ollama sentiment; analyst prompt and pipeline
-      vader_scorer.py
+    sentiment/                    # FinBERT + Ollama sentiment; analyst prompt and pipeline
+      finbert_scorer.py
       ollama_scorer.py
       pipeline.py
       __init__.py
